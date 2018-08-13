@@ -40,7 +40,7 @@ OPTS = -O2
 CFLAGS = $(INCS) $(WARN) $(OPTS) $(DEBUG) $G
 LDFLAGS = $(LIBS) $(OPTS) $(DEBUG)
 
-VPATH = ../$(SRCDIR)
+VPATH = $(SRCDIR)
 
 SOURCES = main.c config.c pool.c buffer.c request.c
 OBJECTS = $(SOURCES:%.c=%.o)
