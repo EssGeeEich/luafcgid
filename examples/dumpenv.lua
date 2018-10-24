@@ -1,10 +1,4 @@
--- utilies for processing a FCGI request
-local lf = require("luafcgid")
-
 function main(env, con)
-	-- gotta give Lua some props
-	con:header("X-Powered-By", "Lua")
-	
 	con:puts("<h1>Environment</h1><pre>\n")
 	for n, v in pairs(env) do
 		con:puts(string.format("%s = %s\n", n, v))

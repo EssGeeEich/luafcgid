@@ -1,8 +1,10 @@
-local M = {}
+LUAFCGID = true
+LUAFCGID_VERSION = 20
+lf = {}
 
 -- serialize simple Lua values into a string
 -- can be used with v = loadstring("return " .. s)()
-function M.serialize(v)
+function lf.serialize(v)
 	local s = ""
     if type(v) == "table" then
     	local t = {}
@@ -12,7 +14,7 @@ function M.serialize(v)
         	elseif type(name) == "string" then
         		name = string.format("[%q]", name)
         	end
-            table.insert(t, string.format("%s = %s", name, M.serialize(val)))
+            table.insert(t, string.format("%s = %s", name, lf.serialize(val)))
         end
 		s = '{' .. table.concat(t, ",")	.. '}'
     elseif type(v) == "number" then
@@ -26,7 +28,7 @@ function M.serialize(v)
 end
 
 -- urlencode a string
-function M.urlencode(s)
+function lf.urlencode(s)
 	if (s and #s > 0) then
 	    s = string.gsub(s, "([^%w ])",
     	    function (c) return string.format ("%%%02X", string.byte(c)) end)
@@ -36,7 +38,7 @@ function M.urlencode(s)
 end
 
 -- urldecode a string
-function M.urldecode(s)
+function lf.urldecode(s)
 	if (s and #s > 0) then
 		s = string.gsub(s, "+", " ")
 		s = string.gsub(s, "%%(%x%x)",
@@ -51,15 +53,14 @@ local function parse_pair(s)
 		_, _, n, v = string.find(s, "([^=]*)=([^=]*)")
 		if not v then v = "" end
 	end
-	return M.urldecode(n), M.urldecode(v)
+	return lf.urldecode(n), lf.urldecode(v)
 end
 
 -- parse an 'application/x-www-form-urlencoded' string into a table
-function M.parse(s)
+function lf.parse(s)
 	local t = {}
 	for p in string.gmatch(s, "[^&]*") do
 		if (p and #p > 0) then
-			print('"' .. p .. '"') 
 			local n, v = parse_pair(p)
 			if t[n] then
 				if type(t[n]) ~= "table" then
@@ -74,4 +75,4 @@ function M.parse(s)
 	return t	
 end
 
-return M
+return lf

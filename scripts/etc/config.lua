@@ -1,20 +1,19 @@
---[[ configuration script for luafcgid ]]--
+--[[ configuration script for luafcgid2 ]]--
 
 -- port or socket path to listen to
--- listen = "127.0.0.1:9000"
-listen = "/var/tmp/luafcgid.sock"
+listen = "/var/tmp/luafcgid2.sock"
 
 -- number of worker threads
-workers = 4
+workers = 8
 
 -- max number of Lua VM states (NOTE: value needs to be larger then or equal to "workers")
-states = workers * 2
+states = workers * 4
 
 -- max number of instances of an individual script allowed
 clones = states
 
 -- housekeeping sweep cycle in milliseconds
-sweep = 5000
+sweep = 10000
 
 -- number of search cycles before creating
 -- a new Lua VM state for a requested script
@@ -33,7 +32,7 @@ headersize = 64
 bodysize = 1024
 
 -- custom headers to add to all requests
-headers = "X-Powered-By: Lua\r\n"
+headers = "X-Powered-By: luafcgid2\r\n"
 
 -- handler function name
 handler = "main"
@@ -48,5 +47,4 @@ contenttype = "text/html"
 maxpost = 1024 * 1024
 
 -- full or relative path to logfile
-logfile = "/var/log/luafcgid/luafcgid.log"
-
+logfile = "/var/log/luafcgid2/luafcgid2.log"

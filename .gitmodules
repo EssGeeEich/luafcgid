@@ -1,0 +1,3 @@
+[submodule "deps/LuaPP"]
+	path = deps/LuaPP
+	url = https://github.com/EssGeeEich/LuaPP.git
