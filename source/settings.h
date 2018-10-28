@@ -32,5 +32,7 @@ public:
 
 extern Settings g_settings;
 extern std::mutex g_errormutex;
+void LogError(std::string const&);
+void LogError(char const*);
 
 #endif

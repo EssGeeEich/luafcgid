@@ -10,6 +10,16 @@ bool LuaStatePool::Start()
 	return true;
 }
 
+static bool Handle404(std::string const& script, FCGX_Request& request)
+{
+	std::string str;
+	str = "Status: 404 Not Found\r\nContent-Type: text-plain\r\n\r\nError: Page not found: ";
+	str += script;
+	str += ".";
+	FCGX_PutStr(str.c_str(), str.length(), request.out);
+	return false;
+}
+
 static bool InitData(LuaThreadCache& cache)
 {
 	// Load the script file
@@ -42,10 +52,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 		"head") != 0)
 	{
 		if(state.isstring(-1))
-		{
-			std::lock_guard<std::mutex> em(g_errormutex);
-			std::cerr << state.tostdstring(-1) << std::endl;
-		}
+			LogError(state.tostdstring(-1));
+		
 		state.close();
 		return false;
 	}
@@ -53,10 +61,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 	if(state.pcall() != 0)
 	{
 		if(state.isstring(-1))
-		{
-			std::lock_guard<std::mutex> em(g_errormutex);
-			std::cerr << state.tostdstring(-1) << std::endl;
-		}
+			LogError(state.tostdstring(-1));
+		
 		state.close();
 		return false;
 	}
@@ -67,10 +73,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 		cache.script.c_str()) != 0)
 	{
 		if(state.isstring(-1))
-		{
-			std::lock_guard<std::mutex> em(g_errormutex);
-			std::cerr << state.tostdstring(-1) << std::endl;
-		}
+			LogError(state.tostdstring(-1));
+		
 		state.close();
 		return false;
 	}
@@ -78,10 +82,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 	if(state.pcall() != 0)
 	{
 		if(state.isstring(-1))
-		{
-			std::lock_guard<std::mutex> em(g_errormutex);
-			std::cerr << state.tostdstring(-1) << std::endl;
-		}
+			LogError(state.tostdstring(-1));
+		
 		state.close();
 		return false;
 	}
@@ -118,8 +120,7 @@ static void luaReset(LuaRequestData reqData)
 
 static void luaLog(LuaRequestData, std::string const& data)
 {
-	std::lock_guard<std::mutex> m(g_errormutex);
-	std::cerr << data << std::endl;
+	LogError(data);
 }
 
 static std::string luaGets(LuaRequestData reqData)
@@ -169,7 +170,7 @@ std::map<std::string, int> LuaStatePool::ServerInfo()
 	return data;
 }
 
-void LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start)
+bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start)
 {
 	Lua::State& state = luaState.m_luaState;
 	cache.headers.clear();
@@ -218,7 +219,13 @@ void LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	state.setglobal("Info");
 	
 	state.getglobal(g_settings.m_luaEntrypoint.c_str());
-	state.pcall();
+	if(state.pcall() != 0)
+	{
+		if(state.isstring(-1))
+			LogError(state.tostdstring(-1));
+		
+		return false;
+	}
 	
 	int dur = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start).count();
 	lrd.m_cache->script.assign(std::to_string(dur));
@@ -234,15 +241,19 @@ void LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	FCGX_PutStr(lrd.m_cache->headers.c_str(), lrd.m_cache->headers.size(), lrd.m_request->out);
 	FCGX_PutStr("\r\n", 2, lrd.m_request->out);
 	FCGX_PutStr(lrd.m_cache->body.c_str(), lrd.m_cache->body.size(), lrd.m_request->out);
+	return true;
 }
 
-int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
+bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 {
 	clock::time_point start = clock::now();
 	
 	char const* script = FCGX_GetParam("SCRIPT_FILENAME", request.envp);
 	if(!script)
-		return 500;
+	{
+		LogError("Invalid FCGI configuration: No SCRIPT_FILENAME variable.");
+		return false;
+	}
 	
 	cache.script = script;
 	
@@ -270,7 +281,7 @@ int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 			if(static_cast<int>(states.size()) < targetStates)
 			{
 				if(!InitData(cache))
-					return 404;
+					return Handle404(cache.script, request);
 				
 				while(static_cast<int>(states.size()) < targetStates)
 				{
@@ -278,7 +289,7 @@ int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 					if(!InitState(states.back(), cache))
 					{
 						states.pop_back();
-						return 500;
+						return false;
 					}
 				}
 				
@@ -328,7 +339,7 @@ int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 			m_poolMutex.chlock_w();
 			
 			if(!InitData(cache))
-				return 404;
+				return Handle404(cache.script, request);
 			
 			LuaStateContainer& states = selIterator->second;
 			int stateLimit = g_settings.m_maxstates;
@@ -340,7 +351,7 @@ int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 				if(!InitState(states.back(), cache))
 				{
 					states.pop_back();
-					return 500;
+					return false;
 				}
 				selState = &(states.back());
 				selStateNum = states.size();
@@ -357,22 +368,25 @@ int LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 					selState->m_inUse.test_and_set(std::memory_order_acquire);
 				}
 				else
-					return 500; // Error loading script
+					return false; // Error loading script
 			}
 		}
 	}
 	// At this point, selState is finally valid and loaded.
 	
+	bool rv = false;
 	try {
 		// Elaborate the request here.
-		ExecRequest(*selState, selStateNum, tid, request, cache, start);
+		rv = ExecRequest(*selState, selStateNum, tid, request, cache, start);
+	}
+	catch(std::exception& e) {
+		LogError(e.what());
 	}
 	catch(...) {
-		selState->m_inUse.clear(std::memory_order_release);
-		return 500;
+		LogError("Unknown exception thrown.");
 	}
 	selState->m_inUse.clear(std::memory_order_release);
-	return 0;
+	return rv;
 }
 
 LuaStatePool g_statepool;

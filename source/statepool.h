@@ -30,10 +30,10 @@ class LuaStatePool {
 	rw_mutex m_poolMutex;
 	std::map<std::string,LuaStateContainer> m_pool;
 	
-	void ExecRequest(LuaState& state, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start);
+	bool ExecRequest(LuaState& state, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start);
 public:
 	bool Start();
-	int ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache);
+	bool ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache);
 	std::map<std::string, int> ServerInfo();
 };
 
