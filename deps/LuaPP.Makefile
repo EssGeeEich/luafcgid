@@ -6,7 +6,7 @@ SOURCES = $(shell find $(SUBMODULE)/$(SUBMODULE_SOURCE) -name 'main.*' -prune -o
 #SOURCES = LuaPP/src/reference.cpp LuaPP/src/state.cpp LuaPP/src/typeext.cpp LuaPP/src/variable.cpp LuaPP/src/library.cpp LuaPP/src/util.cpp
 OBJECTS = $(SOURCES:$(SUBMODULE)/$(SUBMODULE_SOURCE)/%=build/$(SUBMODULE)/%.o)
 INCLUDES = -I$(LUAINC) -I$(SUBMODULE)/$(SUBMODULE_INCLUDE)
-CXXFLAGS = $(CXX_V) $(OPTIMIZATION) $(WARN) $(INCLUDES)
+CXXFLAGS = $(CXX_V) $(OPTIMIZATION) $(WARN) $(INCLUDES) $(DEFINES)
 
 .PHONY: default_target
 default_target: all

@@ -29,6 +29,7 @@ WARN = -Wall -Wextra -pedantic
 
 CXX_V = -std=c++11
 CC_V = -std=c11
+DEFINES = -DHAVE_STRUCT_STAT_ST_MTIME=1 -DHAVE_CXX_MUTEX=1 -DHAVE_CXX_ATOMIC=1
 
 # Precomputed Build Flags
 INCLUDES = -I$(PREFIX)/include -I$(LUAINC) -I$(INC_PATH)
@@ -36,8 +37,8 @@ LDFLAGS = -L$(PREFIX)/lib -L$(LUALIB) $(OPTIMIZATION)
 LDLIBS = -lm -lpthread -lfcgi -l$(LLIB)
 DEP_OBJ =
 
-CXXFLAGS = $(CXX_V) $(OPTIMIZATION) $(WARN) $(INCLUDES)
-CFLAGS   = $(CC_V) $(OPTIMIZATION) $(WARN) $(INCLUDES)
+CXXFLAGS = $(CXX_V) $(OPTIMIZATION) $(WARN) $(INCLUDES) $(DEFINES)
+CFLAGS   = $(CC_V) $(OPTIMIZATION) $(WARN) $(INCLUDES) $(DEFINES)
 
 # Get list of .cpp and .o files. You can add more extensions.
 SOURCES = $(shell find $(SRC_PATH) -type f \( -name '*.cpp' -o -name '*.c' \) -printf '%T@ %p\n' | sort -k 1nr | cut -d ' ' -f 2)
@@ -45,7 +46,7 @@ OBJECTS = $(SOURCES:$(SRC_PATH)/%=$(BUILD_PATH)/%.o)
 DEP_DIRS = $(shell ls -l $(DEP_PATH) | grep '^d' | awk '{ print $$9 }')
 DEPS = cleandep $(DEP_DIRS:%=$(BUILD_PATH)/%.mk)
 
-export OPTIMIZATION PREFIX LUAINC LUALIB LLIB CXX CXX_V CC CC_V WARN
+export OPTIMIZATION PREFIX LUAINC LUALIB LLIB CXX CXX_V CC CC_V WARN DEFINES
 
 .PHONY: default_target
 default_target: all

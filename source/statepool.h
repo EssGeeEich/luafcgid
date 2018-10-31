@@ -9,13 +9,15 @@
 #include "state.h"
 
 struct LuaState {
-	Lua::State m_luaState;
 	std::atomic_flag m_inUse;
+	std::int64_t m_chid;
+	Lua::State m_luaState;
 };
 
 struct LuaThreadCache {
 	std::string script;
 	std::string scriptData;
+	std::int64_t chid;
 	std::string headers;
 	std::string body;
 	std::string getsBuffer;

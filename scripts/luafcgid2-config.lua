@@ -44,3 +44,13 @@ script = ""
 
 -- entrypoint
 entrypoint = "main"
+
+-- Config table, can be accessed from the scripts.
+Config = {
+	entrypoint = entrypoint,
+	string_example = "Test config string",
+	table_example = {
+		"abc","def","ghi",
+		number=42
+	}
+}

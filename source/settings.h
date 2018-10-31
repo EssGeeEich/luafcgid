@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include "state.h"
 
 class Settings {
 public:
@@ -25,9 +26,14 @@ public:
 	std::string m_luaEntrypoint;
 	
 	std::string m_luaLoadData;
+	
+	Lua::State m_luaState;
+	
+	void iPushValueTransfer(Lua::State& dest, int offset);
 public:
 	Settings();
 	bool LoadSettings(std::string const& path);
+	void TransferConfig(Lua::State& dest);
 };
 
 extern Settings g_settings;

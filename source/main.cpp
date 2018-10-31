@@ -21,6 +21,7 @@
 #include "settings.h"
 #include "thread.h"
 #include "statepool.h"
+#include "monitor.h"
 
 int main(int argc, char** argv) {
 	std::unique_ptr<std::ofstream> logFile;
@@ -68,11 +69,11 @@ int main(int argc, char** argv) {
 	}
 	
 	timespec tv;
-	tv.tv_sec = 30;
+	tv.tv_sec = 3;
 	tv.tv_nsec = 0;
 	
 	for (;;) {
-		/* chill till the next sweep */
+		g_fmon.Run();
 		nanosleep(&tv, NULL);
 	}
 

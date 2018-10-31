@@ -1,3 +1,17 @@
+function DumpTable(tbl, prefix)
+	if type(tbl) == "table" then
+		for k,v in pairs(tbl) do
+			if type(k) == "table" then
+				k = "[table]"
+			end
+			
+			DumpTable(v, prefix .. "." .. k)
+		end
+	else
+		Send(string.format("%s = %s\n", prefix, tostring(tbl)))
+	end
+end
+
 function main()
 	Send("<h1>Environment</h1><pre>\n")
 	for n, v in pairs(Env) do
@@ -30,6 +44,8 @@ function main()
 	for k,v in pairs(ThreadData()) do
 		Send(string.format("%s = %s\n", k, v))
 	end
+	Send("</pre><h1>Config</h1><pre>\n")
+	DumpTable(Config or {}, "Config")
 	Send("</pre>")
 	
 	--[[

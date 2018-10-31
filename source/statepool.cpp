@@ -1,15 +1,13 @@
 #include "statepool.h"
 #include "settings.h"
+#include "lua_fnc.h"
+#include "monitor.h"
+
 #include <fstream>
 #include <iostream>
 #include <chrono>
 
-bool LuaStatePool::Start()
-{
-	// Just a placeholder for possible future implementation
-	return true;
-}
-
+// Lua status missing
 static bool Handle404(std::string const& script, FCGX_Request& request)
 {
 	std::string str;
@@ -20,6 +18,7 @@ static bool Handle404(std::string const& script, FCGX_Request& request)
 	return false;
 }
 
+// Load the Lua script file
 static bool InitData(LuaThreadCache& cache)
 {
 	// Load the script file
@@ -34,17 +33,24 @@ static bool InitData(LuaThreadCache& cache)
 	cache.scriptData.resize(size);
 	myScript.seekg(0, std::ios::beg);
 	if(myScript.read(&(cache.scriptData[0]), size))
+	{
+		cache.chid = g_fmon.GetChangeId(cache.script);
 		return true;
+	}
 	return false;
 }
 
+// Create the Lua status
 static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 {
+	lstate.m_chid = 0;
 	Lua::State& state = lstate.m_luaState;
 	// Load cache.scriptData into lua state
 	state = Lua::State::create();
 	state.openlibs();
 	state.luapp_register_metatables();
+	
+	g_settings.TransferConfig(state);
 	
 	if(state.loadbuffer(
 		g_settings.m_luaLoadData.c_str(),
@@ -88,86 +94,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache)
 		return false;
 	}
 	
+	lstate.m_chid = cache.chid;
 	return true;
-}
-
-
-struct LuaRequestData {
-	LuaThreadCache* m_cache;
-	FCGX_Request* m_request;
-};
-
-static void luaHeader(LuaRequestData reqData, std::string const& key, Lua::Arg<std::string> const& val)
-{
-	reqData.m_cache->headers.append(key);
-	if(val) {
-		reqData.m_cache->headers.append(": ");
-		reqData.m_cache->headers.append(*val);
-	}
-	reqData.m_cache->headers.append("\r\n");
-}
-
-static void luaPuts(LuaRequestData reqData, std::string const& data)
-{
-	reqData.m_cache->body.append(data);
-}
-
-static void luaReset(LuaRequestData reqData)
-{
-	reqData.m_cache->headers.clear();
-	reqData.m_cache->body.clear();
-}
-
-static void luaLog(LuaRequestData, std::string const& data)
-{
-	LogError(data);
-}
-
-static std::string luaGets(LuaRequestData reqData)
-{
-	int const chunk_size = 1024;
-	reqData.m_cache->getsBuffer.clear();
-	reqData.m_cache->getsBuffer.resize(chunk_size);
-	
-	std::string getsData;
-	int len = 0;
-	do {
-		len = FCGX_GetStr(&(reqData.m_cache->getsBuffer[0]), chunk_size, reqData.m_request->in);
-		if(len > 0)
-			getsData.append(&(reqData.m_cache->getsBuffer[0]), static_cast<std::size_t>(len));
-	} while(len == chunk_size);
-	return getsData;
-}
-
-static void luaStatus(LuaRequestData reqData, std::string const& data)
-{
-	reqData.m_cache->status = data;
-}
-
-static void luaContentType(LuaRequestData reqData, std::string const& data)
-{
-	reqData.m_cache->contentType = data;
-}
-
-static Lua::Map<int> luaServerHealth(LuaRequestData)
-{
-	Lua::Map<int> d;
-	d.m_data = g_statepool.ServerInfo();
-	return d;
-}
-
-std::map<std::string, int> LuaStatePool::ServerInfo()
-{
-	m_poolMutex.lock_read();
-	std::lock_guard<rw_mutex> lg(m_poolMutex, std::adopt_lock);
-	std::map<std::string, int> data;
-	
-	for(auto it = m_pool.begin(); it != m_pool.end(); ++it)
-	{
-		data[it->first] = it->second.size();
-	}
-	
-	return data;
 }
 
 bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start)
@@ -186,14 +114,7 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	lrd.m_cache = &cache;
 	lrd.m_request = &request;
 	
-	state.luapp_add_translated_function("Header", Lua::Transform(::luaHeader, lrd));
-	state.luapp_add_translated_function("Send", Lua::Transform(::luaPuts, lrd));
-	state.luapp_add_translated_function("Reset", Lua::Transform(::luaReset, lrd));
-	state.luapp_add_translated_function("Log", Lua::Transform(::luaLog, lrd));
-	state.luapp_add_translated_function("Receive", Lua::Transform(::luaGets, lrd));
-	state.luapp_add_translated_function("RespStatus", Lua::Transform(::luaStatus, lrd));
-	state.luapp_add_translated_function("RespContentType", Lua::Transform(::luaContentType, lrd));
-	state.luapp_add_translated_function("ThreadData", Lua::Transform(::luaServerHealth, lrd));
+	SetupLuaFunctions(state, lrd);
 	
 	state.newtable();
 	char** p = lrd.m_request->envp;
@@ -255,12 +176,25 @@ bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 		return false;
 	}
 	
-	cache.script = script;
+	if(!g_fmon.Initialized())
+	{
+		char const* root = FCGX_GetParam("DOCUMENT_ROOT", request.envp);
+		if(!root)
+		{
+			LogError("Invalid FCGI configuration: No DOCUMENT_ROOT variable.");
+			return false;
+		}
+		
+		g_fmon.Init(root);
+	}
+	
+	cache.script = FileMonitor::simplify(script);
 	
 	std::map<std::string,LuaStateContainer>::iterator selIterator;
 	LuaState* selState = nullptr;
 	int selStateNum = -1;
 	std::unique_ptr<LuaState> ownState;
+	bool justLoaded = false;
 	
 	{
 		m_poolMutex.lock_read();
@@ -297,6 +231,7 @@ bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 				selState = &(states.back());
 				selStateNum = states.size();
 				selState->m_inUse.test_and_set(std::memory_order_acquire);
+				justLoaded = true;
 			}
 			
 			m_poolMutex.chlock_r();
@@ -370,10 +305,27 @@ bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 				else
 					return false; // Error loading script
 			}
+			justLoaded = true;
 		}
+		
+		selIterator = m_pool.end(); // Giving up the mutex. Don't use selIterator anymore.
 	}
-	// At this point, selState is finally valid and loaded.
+		
+	// We need to check if the script is up-to-date.
+	if(!justLoaded && selState->m_chid != g_fmon.GetChangeId(cache.script))
+	{
+		// Update now
+		if(!InitData(cache))
+			return Handle404(cache.script, request); // File has been deleted
+		if(!InitState(*selState, cache))
+			return false; // Error loading script
+		selState->m_chid = cache.chid;
+	}
 	
+	if(selState->m_chid < 0)
+		return Handle404(cache.script, request); // Negative = 404
+	
+	// At this point, selState is finally valid, loaded and up-to-date.
 	bool rv = false;
 	try {
 		// Elaborate the request here.
@@ -387,6 +339,27 @@ bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 	}
 	selState->m_inUse.clear(std::memory_order_release);
 	return rv;
+}
+
+
+bool LuaStatePool::Start()
+{
+	// Just a placeholder for possible future implementation
+	return true;
+}
+
+std::map<std::string, int> LuaStatePool::ServerInfo()
+{
+	m_poolMutex.lock_read();
+	std::lock_guard<rw_mutex> lg(m_poolMutex, std::adopt_lock);
+	std::map<std::string, int> data;
+	
+	for(auto it = m_pool.begin(); it != m_pool.end(); ++it)
+	{
+		data[it->first] = it->second.size();
+	}
+	
+	return data;
 }
 
 LuaStatePool g_statepool;

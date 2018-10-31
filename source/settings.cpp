@@ -6,11 +6,7 @@
 #include <fstream>
 #include <iostream>
 
-// LuaPP
-#include <state.h>
-
 static std::string g_luaHeader = R"====(
-
 LUAFCGID=true
 LUAFCGID_VERSION=2
 lf={}
@@ -20,69 +16,14 @@ function lf.urldecode(a)if a and#a>0 then a=string.gsub(a,"+"," ")a=string.gsub(
 function lf.parse_pair(b)local c,d;if b and#b>0 then _,_,c,d=string.find(b,"([^=]*)=([^=]*)")if not d then d=""end end;return lf.urldecode(c),lf.urldecode(d)end
 function lf.parse(a)local b={}for c in string.gmatch(a,"[^&]*")do if c and#c>0 then local d,e=lf.parse_pair(c)if b[d]then if type(b[d])~="table"then b[d]={b[d]}end;table.insert(b[d],e)else b[d]=e end end end;return b end
 
-Response=
-{[100]="100 Continue",
-[101]="101 Switching Protocols",
-[102]="102 Processing",
-[103]="103 Early Hints",
-[200]="200 OK",
-[201]="201 Created",
-[202]="202 Accepted",
-[203]="203 Non-Authoritative Information",
-[204]="204 No Content",
-[205]="205 Reset Content",
-[206]="206 Partial Content",
-[207]="207 Multi-Status",
-[208]="208 Already Reported",
-[226]="226 IM Used",
-[300]="300 Multiple Choices",
-[301]="301 Moved Permanently",
-[302]="302 Found",
-[303]="303 See Other",
-[304]="304 Not Modified",
-[305]="305 Use Proxy",
-[306]="306 Switch Proxy",
-[307]="307 Temporary Redirect",
-[308]="308 Permanent Redirect",
-[400]="400 Bad Request",
-[401]="401 Unauthorized",
-[402]="402 Payment Required",
-[403]="403 Forbidden",
-[404]="404 Not Found",
-[405]="405 Method Not Allowed",
-[406]="406 Not Acceptable",
-[407]="407 Proxy Authentication Required",
-[408]="408 Request Timeout",
-[409]="409 Conflict",
-[410]="410 Gone",
-[411]="411 Length Required",
-[412]="412 Precondition Failed",
-[413]="413 Payload Too Large",
-[414]="414 URI Too Long",
-[415]="415 Unsupported Media Type",
-[416]="416 Range Not Satisfiable",
-[417]="417 Expectation Failed",
-[418]="418 I'm a teapot",
-[421]="421 Misdirected Request",
-[422]="422 Unprocessable Entity",
-[423]="423 Locked",
-[424]="424 Failed Dependency",
-[426]="426 Upgrade Required",
-[428]="428 Precondition Required",
-[429]="429 Too Many Requests",
-[431]="431 Request Header Fields Too Large",
-[451]="451 Unavailable For Legal Reasons",
-[500]="500 Internal Server Error",
-[501]="501 Not Implemented",
-[502]="502 Bad Gateway",
-[503]="503 Service Unavailable",
-[504]="504 Gateway Timeout",
-[505]="505 HTTP Version Not Supported",
-[506]="506 Variant Also Negotiates",
-[507]="507 Insufficient Storage",
-[508]="508 Loop Detected",
-[510]="510 Not Extended",
-[511]="511 Network Authentication Required"}
+Response={
+[100]="100 Continue",[101]="101 Switching Protocols",[102]="102 Processing",[103]="103 Early Hints",
+[200]="200 OK",[201]="201 Created",[202]="202 Accepted",[203]="203 Non-Authoritative Information",[204]="204 No Content",[205]="205 Reset Content",[206]="206 Partial Content",[207]="207 Multi-Status",[208]="208 Already Reported",[226]="226 IM Used",
+[300]="300 Multiple Choices",[301]="301 Moved Permanently",[302]="302 Found",[303]="303 See Other",[304]="304 Not Modified",[305]="305 Use Proxy",[306]="306 Switch Proxy",[307]="307 Temporary Redirect",[308]="308 Permanent Redirect",
+[400]="400 Bad Request",[401]="401 Unauthorized",[402]="402 Payment Required",[403]="403 Forbidden",[404]="404 Not Found",[405]="405 Method Not Allowed",[406]="406 Not Acceptable",[407]="407 Proxy Authentication Required",[408]="408 Request Timeout",[409]="409 Conflict",[410]="410 Gone",[411]="411 Length Required",[412]="412 Precondition Failed",[413]="413 Payload Too Large",[414]="414 URI Too Long",[415]="415 Unsupported Media Type",
+[416]="416 Range Not Satisfiable",[417]="417 Expectation Failed",[418]="418 I'm a teapot",[421]="421 Misdirected Request",[422]="422 Unprocessable Entity",[423]="423 Locked",[424]="424 Failed Dependency",[426]="426 Upgrade Required",[428]="428 Precondition Required",[429]="429 Too Many Requests",[431]="431 Request Header Fields Too Large",[451]="451 Unavailable For Legal Reasons",
+[500]="500 Internal Server Error",[501]="501 Not Implemented",[502]="502 Bad Gateway",[503]="503 Service Unavailable",[504]="504 Gateway Timeout",[505]="505 HTTP Version Not Supported",[506]="506 Variant Also Negotiates",[507]="507 Insufficient Storage",[508]="508 Loop Detected",[510]="510 Not Extended",[511]="511 Network Authentication Required"
+}
 )====";
 
 void BindNumber(Lua::State& s, const char* variable, int& def_val) {
@@ -115,24 +56,81 @@ Settings::Settings() :
 	m_luaEntrypoint("main")
 {}
 
+
+void Settings::iPushValueTransfer(Lua::State& dest, int offset)
+{
+	// Pop a value from m_luaState
+	// Push a value to dest
+	Lua::Type t = m_luaState.type(offset);
+	
+	switch(t)
+	{
+	case Lua::TP_NONE:
+	case Lua::TP_NIL:
+	default:
+		dest.pushnil();
+		break;
+	case Lua::TP_BOOL:
+		dest.pushboolean(m_luaState.toboolean(offset));
+		break;
+	case Lua::TP_NUMBER:
+		if(m_luaState.isinteger(offset))
+			dest.pushinteger(m_luaState.tointeger(offset));
+		else
+			dest.pushnumber(m_luaState.tonumber(offset));
+		break;
+	case Lua::TP_STRING:
+		dest.pushstdstring(m_luaState.tostdstring(offset));
+		break;
+	case Lua::TP_TABLE:
+		{
+			dest.newtable();
+			m_luaState.pushnil();
+			if(offset < 0)
+				--offset;
+			while(m_luaState.next(offset) != 0)
+			{
+				iPushValueTransfer(dest, -2);
+				iPushValueTransfer(dest, -1);
+				dest.rawset(-3);
+				m_luaState.pop(1);
+			}
+			++offset;
+		}
+		break;
+	}
+}
+
+// setup LuaConfig.* and Config.*
+std::mutex g_transferMutex;
+void Settings::TransferConfig(Lua::State& dest)
+{
+	std::lock_guard<std::mutex> g(g_transferMutex);
+	
+	m_luaState.getglobal("Config");
+	iPushValueTransfer(dest, -1);
+	m_luaState.pop(1);
+	dest.setglobal("Config");
+}
+
 bool Settings::LoadSettings(std::string const& path)
 {
-	Lua::State state = Lua::State::create();
-	if(state.loadfile(path.c_str()) == LUA_OK && state.pcall() == LUA_OK) {
-		BindNumber(state, "threads", m_threadCount);
-		BindNumber(state, "states", m_states);
-		BindNumber(state, "maxstates", m_maxstates);
-		BindNumber(state, "retries", m_seek_retries);
-		BindNumber(state, "headersize", m_headersize);
-		BindNumber(state, "bodysize", m_bodysize);
-		BindString(state, "headers", m_headers);
-		BindString(state, "httpstatus", m_defaultHttpStatus);
-		BindString(state, "contenttype", m_defaultContentType);
-		BindNumber(state, "maxpost", m_maxPostSize);
-		BindString(state, "logfile", m_logFile);
-		BindString(state, "listen", m_listen);
-		BindString(state, "script", m_luaHeader);
-		BindString(state, "entrypoint", m_luaEntrypoint);
+	m_luaState = Lua::State::create();
+	if(m_luaState.loadfile(path.c_str()) == LUA_OK && m_luaState.pcall() == LUA_OK) {
+		BindNumber(m_luaState, "threads", m_threadCount);
+		BindNumber(m_luaState, "states", m_states);
+		BindNumber(m_luaState, "maxstates", m_maxstates);
+		BindNumber(m_luaState, "retries", m_seek_retries);
+		BindNumber(m_luaState, "headersize", m_headersize);
+		BindNumber(m_luaState, "bodysize", m_bodysize);
+		BindString(m_luaState, "headers", m_headers);
+		BindString(m_luaState, "httpstatus", m_defaultHttpStatus);
+		BindString(m_luaState, "contenttype", m_defaultContentType);
+		BindNumber(m_luaState, "maxpost", m_maxPostSize);
+		BindString(m_luaState, "logfile", m_logFile);
+		BindString(m_luaState, "listen", m_listen);
+		BindString(m_luaState, "script", m_luaHeader);
+		BindString(m_luaState, "entrypoint", m_luaEntrypoint);
 	}
 	
 	if(m_threadCount < 1)
