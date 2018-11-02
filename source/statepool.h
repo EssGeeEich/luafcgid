@@ -1,6 +1,7 @@
 #ifndef STATEPOOL_H_INCLUDED
 #define STATEPOOL_H_INCLUDED
 #include <list>
+#include <vector>
 #include <atomic>
 #include <string>
 #include <map>
@@ -19,7 +20,7 @@ struct LuaThreadCache {
 	std::string scriptData;
 	std::int64_t chid;
 	std::string headers;
-	std::string body;
+	std::vector<std::string> body;
 	std::string getsBuffer;
 	std::string status;
 	std::string contentType;

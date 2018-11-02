@@ -46,7 +46,8 @@ Settings::Settings() :
 	m_maxstates(5),
 	m_seek_retries(3),
 	m_headersize(256),
-	m_bodysize(8192),
+	m_bodysize(2048),
+	m_bodysectors(4),
 	m_headers("X-Powered-By: luafcgid2\r\n"),
 	m_defaultHttpStatus("200 OK"),
 	m_defaultContentType("text/html"),
@@ -123,6 +124,7 @@ bool Settings::LoadSettings(std::string const& path)
 		BindNumber(m_luaState, "retries", m_seek_retries);
 		BindNumber(m_luaState, "headersize", m_headersize);
 		BindNumber(m_luaState, "bodysize", m_bodysize);
+		BindNumber(m_luaState, "bodysectors", m_bodysectors);
 		BindString(m_luaState, "headers", m_headers);
 		BindString(m_luaState, "httpstatus", m_defaultHttpStatus);
 		BindString(m_luaState, "contenttype", m_defaultContentType);
@@ -145,6 +147,8 @@ bool Settings::LoadSettings(std::string const& path)
 		m_headersize = 0;
 	if(m_bodysize < 0)
 		m_bodysize = 0;
+	if(m_bodysectors < 0)
+		m_bodysectors = 0;
 	if(m_maxPostSize < 0)
 		m_maxPostSize = 0;
 	

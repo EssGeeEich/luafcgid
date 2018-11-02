@@ -20,14 +20,13 @@ function main()
 	Send("</pre>\n")
 
 	if Env.REQUEST_METHOD == "GET" then
-		s = {}  -- string sets are faster then calling Send() all the time
+		-- String tables aren't faster than multiple Send calls anymore.
 		params = lf.parse(Env.QUERY_STRING)
-		table.insert(s, "<h1>GET Params</h1><pre>\n")
+		Send("<h1>GET Params</h1><pre>\n")
 		for n, v in pairs(params) do
-			table.insert(s, string.format("%s = %s\n", n, v))
+			Send(string.format("%s = %s\n", n, v))
 		end
-		table.insert(s, "</pre>\n")
-		Send(table.concat(s))
+		Send("</pre>\n")
 	end
 
 	if Env.REQUEST_METHOD == "POST" then

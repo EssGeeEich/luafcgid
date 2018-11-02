@@ -21,7 +21,11 @@ maxstates = 5
 headersize = 64
 
 -- starting buffer size for HTTP body 
-bodysize = 1024
+bodysize = 2048
+
+-- starting buffer is split in (bodysectors) amount of (bodysize) strings
+-- old behavior is 1. Thanks to C++11, this method can vastly improve performance on low-end systems due to less resizes/copies.
+bodysectors = 4
 
 -- custom headers to add to all requests
 headers = "X-Powered-By: luafcgid2\r\n"

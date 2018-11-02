@@ -13,7 +13,34 @@ static void luaHeader(LuaRequestData reqData, std::string const& key, Lua::Arg<s
 
 static void luaPuts(LuaRequestData reqData, std::string const& data)
 {
-	reqData.m_cache->body.append(data);
+	if(g_settings.m_bodysectors == 1 && !reqData.m_cache->body.empty())
+	{
+		reqData.m_cache->body[0].append(data);
+		return;
+	}
+	
+	std::size_t firstAvailable = 0;
+	for(std::size_t i = 0; i < reqData.m_cache->body.size(); ++i)
+	{
+		if(reqData.m_cache->body[i].empty())
+		{
+			firstAvailable = (i>0)?(i-1):0;
+			break;
+		}
+	}
+	for(std::size_t i = firstAvailable; i < reqData.m_cache->body.size(); ++i)
+	{
+		auto it = &(reqData.m_cache->body[i]);
+		if( it->empty() || (data.size() <= ( it->capacity() - it->size() )) )
+		{
+			it->append(data);
+			return;
+		}
+	}
+	reqData.m_cache->body.emplace_back();
+	if(static_cast<int>(data.size()) < g_settings.m_bodysize)
+		reqData.m_cache->body.back().reserve(g_settings.m_bodysize);
+	reqData.m_cache->body.back().append(data);
 }
 
 static void luaReset(LuaRequestData reqData)

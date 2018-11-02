@@ -14,6 +14,7 @@ public:
 	int m_seek_retries;
 	int m_headersize;
 	int m_bodysize;
+	int m_bodysectors;
 	
 	std::string m_headers;
 	std::string m_defaultHttpStatus;

@@ -102,13 +102,17 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 {
 	Lua::State& state = luaState.m_luaState;
 	cache.headers.clear();
-	cache.body.clear();
 	cache.getsBuffer.clear();
 	cache.status = g_settings.m_defaultHttpStatus;
 	cache.contentType = g_settings.m_defaultContentType;
 	
 	cache.headers.reserve(g_settings.m_headersize);
-	cache.body.reserve(g_settings.m_bodysize);
+	cache.body.resize(g_settings.m_bodysectors);
+	for(auto it = cache.body.begin(); it != cache.body.end(); ++it)
+	{
+		it->resize(0);
+		it->reserve(g_settings.m_bodysize);
+	}
 	
 	LuaRequestData lrd;
 	lrd.m_cache = &cache;
@@ -161,7 +165,10 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	FCGX_PutStr(g_settings.m_headers.c_str(), g_settings.m_headers.size(), lrd.m_request->out);
 	FCGX_PutStr(lrd.m_cache->headers.c_str(), lrd.m_cache->headers.size(), lrd.m_request->out);
 	FCGX_PutStr("\r\n", 2, lrd.m_request->out);
-	FCGX_PutStr(lrd.m_cache->body.c_str(), lrd.m_cache->body.size(), lrd.m_request->out);
+	for(auto it = lrd.m_cache->body.begin(); it != lrd.m_cache->body.end(); ++it)
+	{
+		FCGX_PutStr(it->c_str(), it->size(), lrd.m_request->out);
+	}
 	return true;
 }
 
