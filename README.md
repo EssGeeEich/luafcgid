@@ -31,7 +31,7 @@ All development testing is done with a Raspberry Pi Zero W.
 On a Raspberry Pi, simply run the following:
 
     # sudo apt-get -y install libfcgi-dev liblua5.3-dev git make build-essential
-    # git clone --recursive git@github.com:EssGeeEich/luafcgid2.git
+    # git clone --recursive https://github.com/EssGeeEich/luafcgid2.git
     # cd luafcgid2
     # make
     # sudo make install install-daemon
