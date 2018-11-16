@@ -3,4 +3,4 @@
 	url = https://github.com/EssGeeEich/LuaPP.git
 [submodule "deps/fswatch"]
 	path = deps/fswatch
-	url = git@github.com:emcrisostomo/fswatch.git
+	url = https://github.com/emcrisostomo/fswatch.git
