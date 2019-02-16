@@ -73,7 +73,6 @@ int main(int argc, char** argv) {
 	tv.tv_nsec = 0;
 	
 	for (;;) {
-		g_fmon.Run();
 		nanosleep(&tv, NULL);
 	}
 

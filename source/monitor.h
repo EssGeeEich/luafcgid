@@ -1,46 +1,54 @@
+#ifndef MONITOR_H
+#define MONITOR_H
 #include "settings.h"
-#include "rw_mutex.h"
-#include <map>
+#include <fstream>
+#include <memory>
 #include <atomic>
-#include <c++/monitor.hpp>
-#include <c++/event.hpp>
+#include <map>
 
-struct FileRevisionData {
-	inline FileRevisionData() : RevisionNumber(0), NewRevision(false) {}
+class SimplifiedPath {
+	friend class FileMonitor;
+	std::string m_path;
+public:
+	// Const only
+	inline std::string const& get() const {
+		return m_path;
+	}
+};
+
+struct FileChangeData {
+	typedef std::chrono::steady_clock clock_t;
+	inline FileChangeData()
+		: m_exists(false), m_filesize(0) {}
 	
-	std::int64_t RevisionNumber;
-	bool NewRevision;
+	inline bool operator == (FileChangeData const& o) const {
+		return
+			m_exists == o.m_exists &&
+			m_filesize == o.m_filesize &&
+			m_hash == o.m_hash;
+	}
+	inline bool operator != (FileChangeData const& o) const {
+		return !(*this == o);
+	}
+	
+	bool m_exists;
+	std::vector<std::uint8_t> m_hash;
+	std::size_t m_filesize;
+	
+	clock_t::time_point m_captureTime;
 };
 
 class FileMonitor {
-	fsw::monitor* m_monitor;
-	
-	rw_mutex m_mx;
-	std::string m_prebuffer;
-	std::map<std::string, FileRevisionData> m_revisions;
-	
-	friend void fmon_event_callback(std::vector<fsw::event> const&, void*);
-	FileMonitor& operator=(FileMonitor const&) =delete;
-	FileMonitor(FileMonitor const&) =delete;
-	
-	bool iInitialized() const;
-	void iTouchFile(std::string const& file, bool deleted);
-	void HandleEvents(std::vector<fsw::event> const&);
+	static FileChangeData getFileStatus(std::ifstream&);
+	FileMonitor() =delete;
 public:
-	FileMonitor();
-	~FileMonitor();
-	void Close();
-	bool Initialized();
-	bool Init(char const* dir);
+	static SimplifiedPath simplify(std::string const&);
 	
-	static std::string simplify(std::string const&);
-	
-	void Run();
-	
-	// simplify'ed path required
-	// Returns a negative number if the file is missing.
-	// Returns a number 1-n for every different revision of the file
-	std::int64_t GetChangeId(std::string const&);
+	static std::unique_ptr<std::ifstream>
+		getFileForLoading(
+			SimplifiedPath const&,
+			FileChangeData&,
+			bool =false);
 };
 
-extern FileMonitor g_fmon;
+#endif

@@ -16,6 +16,9 @@ public:
 	int m_bodysize;
 	int m_bodysectors;
 	
+	int m_fileInfoTime;
+	bool m_useFileChecksum;
+	
 	std::string m_headers;
 	std::string m_defaultHttpStatus;
 	std::string m_defaultContentType;

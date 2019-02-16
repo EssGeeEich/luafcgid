@@ -1,6 +1,6 @@
 [submodule "deps/LuaPP"]
 	path = deps/LuaPP
 	url = https://github.com/EssGeeEich/LuaPP.git
-[submodule "deps/fswatch"]
-	path = deps/fswatch
-	url = https://github.com/emcrisostomo/fswatch.git
+[submodule "deps/PicoSHA2"]
+	path = deps/PicoSHA2
+	url = https://github.com/okdshin/PicoSHA2.git

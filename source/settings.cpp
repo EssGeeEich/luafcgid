@@ -26,6 +26,13 @@ Response={
 }
 )====";
 
+void BindBool(Lua::State& s, const char* variable, bool& def_val) {
+	if(s.getglobal(variable) == Lua::TP_BOOL) {
+		def_val = s.toboolean(-1);
+	}
+	s.pop(1);
+}
+
 void BindNumber(Lua::State& s, const char* variable, int& def_val) {
 	if(s.getglobal(variable) == Lua::TP_NUMBER) {
 		def_val = s.tonumber(-1);
@@ -48,6 +55,8 @@ Settings::Settings() :
 	m_headersize(256),
 	m_bodysize(2048),
 	m_bodysectors(4),
+	m_fileInfoTime(5000),
+	m_useFileChecksum(true),
 	m_headers("X-Powered-By: luafcgid2\r\n"),
 	m_defaultHttpStatus("200 OK"),
 	m_defaultContentType("text/html"),
@@ -118,21 +127,23 @@ bool Settings::LoadSettings(std::string const& path)
 {
 	m_luaState = Lua::State::create();
 	if(m_luaState.loadfile(path.c_str()) == LUA_OK && m_luaState.pcall() == LUA_OK) {
-		BindNumber(m_luaState, "threads", m_threadCount);
-		BindNumber(m_luaState, "states", m_states);
-		BindNumber(m_luaState, "maxstates", m_maxstates);
-		BindNumber(m_luaState, "retries", m_seek_retries);
-		BindNumber(m_luaState, "headersize", m_headersize);
-		BindNumber(m_luaState, "bodysize", m_bodysize);
-		BindNumber(m_luaState, "bodysectors", m_bodysectors);
-		BindString(m_luaState, "headers", m_headers);
-		BindString(m_luaState, "httpstatus", m_defaultHttpStatus);
-		BindString(m_luaState, "contenttype", m_defaultContentType);
-		BindNumber(m_luaState, "maxpost", m_maxPostSize);
-		BindString(m_luaState, "logfile", m_logFile);
-		BindString(m_luaState, "listen", m_listen);
-		BindString(m_luaState, "script", m_luaHeader);
-		BindString(m_luaState, "entrypoint", m_luaEntrypoint);
+		BindNumber(m_luaState, "WorkerThreads", m_threadCount);
+		BindNumber(m_luaState, "LuaStates", m_states);
+		BindNumber(m_luaState, "LuaMaxStates", m_maxstates);
+		BindNumber(m_luaState, "LuaMaxSearchRetries", m_seek_retries);
+		BindNumber(m_luaState, "HeadersSize", m_headersize);
+		BindNumber(m_luaState, "BodySize", m_bodysize);
+		BindNumber(m_luaState, "BodySectors", m_bodysectors);
+		BindNumber(m_luaState, "MinFileInfoTime", m_fileInfoTime);
+		BindBool  (m_luaState, "UseFileChecksum", m_useFileChecksum);
+		BindString(m_luaState, "DefaultHeaders", m_headers);
+		BindString(m_luaState, "DefaultHttpStatus", m_defaultHttpStatus);
+		BindString(m_luaState, "DefaultContentType", m_defaultContentType);
+		BindNumber(m_luaState, "MaxPostSize", m_maxPostSize);
+		BindString(m_luaState, "LogFilePath", m_logFile);
+		BindString(m_luaState, "Listen", m_listen);
+		BindString(m_luaState, "StartupScript", m_luaHeader);
+		BindString(m_luaState, "Entrypoint", m_luaEntrypoint);
 	}
 	
 	if(m_threadCount < 1)

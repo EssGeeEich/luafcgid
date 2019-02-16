@@ -1,8 +1,8 @@
-SUBMODULE = LuaPP
-SUBMODULE_SOURCE = src
-SUBMODULE_INCLUDE = include
+SUBMODULE = PicoSHA2
+SUBMODULE_SOURCE = /
+SUBMODULE_INCLUDE = /
 
-SOURCES = $(shell find $(SUBMODULE)/$(SUBMODULE_SOURCE) -name 'main.*' -prune -o -type f \( -name '*.cpp' -o -name '*.c' \) -printf '%T@ %p\n' | sort -k 1nr | cut -d ' ' -f 2)
+#SOURCES = $(shell find $(SUBMODULE)/$(SUBMODULE_SOURCE) -name 'main.*' -prune -o -type f \( -name '*.cpp' -o -name '*.c' \) -printf '%T@ %p\n' | sort -k 1nr | cut -d ' ' -f 2)
 OBJECTS = $(SOURCES:$(SUBMODULE)/$(SUBMODULE_SOURCE)/%=build/$(SUBMODULE)/%.o)
 INCLUDES = -I$(LUAINC) -I$(SUBMODULE)/$(SUBMODULE_INCLUDE)
 CXXFLAGS = $(CXX_V) $(OPTIMIZATION) $(WARN) $(INCLUDES) $(DEFINES)

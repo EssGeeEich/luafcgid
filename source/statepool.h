@@ -8,17 +8,17 @@
 #include <fcgiapp.h>
 #include "rw_mutex.h"
 #include "state.h"
+#include "monitor.h"
 
 struct LuaState {
 	std::atomic_flag m_inUse;
-	std::int64_t m_chid;
+	FileChangeData m_chid;
 	Lua::State m_luaState;
 };
 
 struct LuaThreadCache {
-	std::string script;
+	SimplifiedPath script;
 	std::string scriptData;
-	std::int64_t chid;
 	std::string headers;
 	std::vector<std::string> body;
 	std::string getsBuffer;
@@ -30,8 +30,13 @@ class LuaStatePool {
 	typedef std::list<LuaState> LuaStateContainer;
 	typedef std::chrono::high_resolution_clock clock;
 	
+	struct LuaPool {
+		LuaStateContainer m_states;
+		FileChangeData m_mostRecentChange;
+	};
+	
 	rw_mutex m_poolMutex;
-	std::map<std::string,LuaStateContainer> m_pool;
+	std::map<std::string,LuaPool> m_pool;
 	
 	bool ExecRequest(LuaState& state, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start);
 public:
