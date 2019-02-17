@@ -48,7 +48,7 @@ Add the following lines to your /etc/nginx/sites-available/your-site-here in the
 		include        fastcgi_params;
 	}
 
-**NOTE:** _make sure your root directive is set correctly_
+**NOTE:** _make sure your root directive is set correctly, and the DOCUMENT_ROOT variable is set correctly_
    
 # Design
 
