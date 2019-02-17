@@ -3,15 +3,18 @@
 
 // Not a fully featured path simplifier, but it's just a safety measure.
 // Regular URLs will not be heavily impacted by this function.
-SimplifiedPath FileMonitor::simplify(std::string const& src)
+SimplifiedPath FileMonitor::simplify(std::string const& src, std::string const& root)
 {
 	SimplifiedPath rval;
 	std::string& dst = rval.m_path;
+	std::string& dir = rval.m_dir;
+	rval.m_root = root;
 	dst.reserve(src.size());
+	dir.reserve(src.size()-6); // Shortest filename section: /x.lua
 	
 	std::string::size_type i = 0;
 	std::string::size_type len = src.size();
-	std::string dir;
+	std::string sector;
 	
 	while(i < len)
 	{
@@ -22,13 +25,18 @@ SimplifiedPath FileMonitor::simplify(std::string const& src)
 		while(i < len && src[i] != '/' && src[i] != '\\')
 			++i;
 		
-		dir.assign(src, begin, i-begin);
+		if(!sector.empty() && sector != ".." && sector != ".")
+			dir += "/" + sector;
 		
-		if(dir == ".." || dir == ".")
+		sector.assign(src, begin, i-begin);
+		
+		if(sector == ".." || sector == ".")
 			continue;
 		
-		dst = dst + "/" + dir;
+		dir = dst;
+		dst += "/" + sector;
 	}
+	
 	return rval;
 }
 

@@ -31,6 +31,16 @@ static bool InitData(LuaThreadCache& cache, std::size_t filesize, std::unique_pt
 	return true;
 }
 
+static void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+    if(from.empty())
+        return;
+    size_t start_pos = 0;
+    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length();
+    }
+}
+
 // Create the Lua status
 static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeData const& fcd)
 {
@@ -38,6 +48,37 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeD
 	// Load cache.scriptData into lua state
 	state = Lua::State::create();
 	state.openlibs();
+	
+	// Make package.path and package.cpath localized and safer
+	state.getglobal("package");
+	{
+		state.getfield(-1, "path");
+		std::string path = state.tostdstring(-1);
+		state.pop(1);
+		
+		replaceAll(path, ";./?.lua", "");
+		replaceAll(path, ";./?/init.lua", "");
+		path += ";" + cache.script.root() + "/?.lua";
+		path += ";" + cache.script.root() + "/?/init.lua";
+		path += ";" + cache.script.dir() + "/?.lua";
+		path += ";" + cache.script.dir() + "/?/init.lua";
+		
+		state.pushstdstring(path);
+		state.setfield(-2, "path");
+	}
+	{
+		state.getfield(-1, "cpath");
+		std::string cpath = state.tostdstring(-1);
+		state.pop(1);
+		
+		// As a security measure, do not use relative paths for .so libs.
+		replaceAll(cpath, ";./?.", ";" + cache.script.root() + "/?.");
+		
+		state.pushstdstring(cpath);
+		state.setfield(-2, "cpath");
+	}
+	state.pop(1);
+	
 	state.luapp_register_metatables();
 	
 	g_settings.TransferConfig(state);
@@ -169,13 +210,19 @@ bool LuaStatePool::ExecMT(int tid, FCGX_Request& request, LuaThreadCache& cache)
 	clock::time_point start = clock::now();
 	
 	char const* script = FCGX_GetParam("SCRIPT_FILENAME", request.envp);
+	char const* root = FCGX_GetParam("DOCUMENT_ROOT", request.envp);
 	if(!script)
 	{
 		LogError("Invalid FCGI configuration: No SCRIPT_FILENAME variable.");
 		return false;
 	}
+	if(!root)
+	{
+		LogError("Invalid FCGI configuration: No DOCUMENT_ROOT variable.");
+		return false;
+	}
 	
-	cache.script = FileMonitor::simplify(script);
+	cache.script = FileMonitor::simplify(script, root);
 	
 	std::map<std::string,LuaPool>::iterator selIterator;
 	LuaState* selState = nullptr;

@@ -9,10 +9,18 @@
 class SimplifiedPath {
 	friend class FileMonitor;
 	std::string m_path;
+	std::string m_dir;
+	std::string m_root;
 public:
 	// Const only
 	inline std::string const& get() const {
 		return m_path;
+	}
+	inline std::string const& dir() const {
+		return m_dir;
+	}
+	inline std::string const& root() const {
+		return m_root;
 	}
 };
 
@@ -42,7 +50,7 @@ class FileMonitor {
 	static FileChangeData getFileStatus(std::ifstream&);
 	FileMonitor() =delete;
 public:
-	static SimplifiedPath simplify(std::string const&);
+	static SimplifiedPath simplify(std::string const&, std::string const&);
 	
 	static std::unique_ptr<std::ifstream>
 		getFileForLoading(

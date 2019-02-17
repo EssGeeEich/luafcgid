@@ -87,6 +87,11 @@ static Lua::Map<int> luaServerHealth(LuaRequestData)
 	return d;
 }
 
+static std::string luaDir(LuaRequestData reqData)
+{
+	return reqData.m_cache->script.dir();
+}
+
 void SetupLuaFunctions(Lua::State& state, LuaRequestData& lrd)
 {
 	state.luapp_add_translated_function("Header", Lua::Transform(::luaHeader, lrd));
@@ -97,4 +102,5 @@ void SetupLuaFunctions(Lua::State& state, LuaRequestData& lrd)
 	state.luapp_add_translated_function("RespStatus", Lua::Transform(::luaStatus, lrd));
 	state.luapp_add_translated_function("RespContentType", Lua::Transform(::luaContentType, lrd));
 	state.luapp_add_translated_function("ThreadData", Lua::Transform(::luaServerHealth, lrd));
+	state.luapp_add_translated_function("Dir", Lua::Transform(::luaDir, lrd));
 }
