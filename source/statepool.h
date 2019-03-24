@@ -29,15 +29,15 @@ struct LuaThreadCache {
 class LuaStatePool {
 	typedef std::list<LuaState> LuaStateContainer;
 	typedef std::chrono::high_resolution_clock clock;
-	
+
 	struct LuaPool {
 		LuaStateContainer m_states;
 		FileChangeData m_mostRecentChange;
 	};
-	
+
 	rw_mutex m_poolMutex;
 	std::map<std::string,LuaPool> m_pool;
-	
+
 	bool ExecRequest(LuaState& state, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start);
 public:
 	bool Start();

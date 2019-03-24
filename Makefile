@@ -107,6 +107,11 @@ install: all
 	install -m 755 $(BIN) $(BINDIR)
 	install -m 644 scripts/luafcgid2-config.lua $(CONFDIR)/config.lua
 
+.PHONY: update
+update: all
+	@mkdir -p $(CONFDIR)
+	install -m 755 $(BIN) $(BINDIR)
+
 .PHONY: install-daemon
 install-daemon: all
 	install -m 755 scripts/luafcgid2-init.d $(INITDIR)/luafcgid2

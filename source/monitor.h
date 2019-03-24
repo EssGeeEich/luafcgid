@@ -1,5 +1,5 @@
-#ifndef MONITOR_H
-#define MONITOR_H
+#ifndef MONITOR_H_INCLUDED
+#define MONITOR_H_INCLUDED
 #include "settings.h"
 #include <fstream>
 #include <memory>
@@ -28,7 +28,7 @@ struct FileChangeData {
 	typedef std::chrono::steady_clock clock_t;
 	inline FileChangeData()
 		: m_exists(false), m_filesize(0) {}
-	
+
 	inline bool operator == (FileChangeData const& o) const {
 		return
 			m_exists == o.m_exists &&
@@ -38,11 +38,11 @@ struct FileChangeData {
 	inline bool operator != (FileChangeData const& o) const {
 		return !(*this == o);
 	}
-	
+
 	bool m_exists;
 	std::vector<std::uint8_t> m_hash;
 	std::size_t m_filesize;
-	
+
 	clock_t::time_point m_captureTime;
 };
 
@@ -51,7 +51,7 @@ class FileMonitor {
 	FileMonitor() =delete;
 public:
 	static SimplifiedPath simplify(std::string const&, std::string const&);
-	
+
 	static std::unique_ptr<std::ifstream>
 		getFileForLoading(
 			SimplifiedPath const&,

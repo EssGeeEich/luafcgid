@@ -57,6 +57,15 @@ Settings::Settings() :
 	m_bodysectors(4),
 	m_fileInfoTime(5000),
 	m_useFileChecksum(true),
+	m_sessionName("XLuaSession"),
+	m_sessionTime(3600),
+	m_sessionKeyLen(24),
+	
+	m_sessionIpScore(3),
+	m_sessionUserAgentScore(2),
+	m_sessionLanguageScore(1),
+	m_sessionTargetScore(3),
+	
 	m_headers("X-Powered-By: luafcgid2\r\n"),
 	m_defaultHttpStatus("200 OK"),
 	m_defaultContentType("text/html"),
@@ -72,7 +81,7 @@ void Settings::iPushValueTransfer(Lua::State& dest, int offset)
 	// Pop a value from m_luaState
 	// Push a value to dest
 	Lua::Type t = m_luaState.type(offset);
-	
+
 	switch(t)
 	{
 	case Lua::TP_NONE:
@@ -116,7 +125,7 @@ std::mutex g_transferMutex;
 void Settings::TransferConfig(Lua::State& dest)
 {
 	std::lock_guard<std::mutex> g(g_transferMutex);
-	
+
 	m_luaState.getglobal("Config");
 	iPushValueTransfer(dest, -1);
 	m_luaState.pop(1);
@@ -136,6 +145,13 @@ bool Settings::LoadSettings(std::string const& path)
 		BindNumber(m_luaState, "BodySectors", m_bodysectors);
 		BindNumber(m_luaState, "MinFileInfoTime", m_fileInfoTime);
 		BindBool  (m_luaState, "UseFileChecksum", m_useFileChecksum);
+		BindString(m_luaState, "SessionName", m_sessionName);
+		BindNumber(m_luaState, "SessionTime", m_sessionTime);
+		BindNumber(m_luaState, "SessionKeyLen", m_sessionKeyLen);
+		BindNumber(m_luaState, "SessionIpScore", m_sessionIpScore);
+		BindNumber(m_luaState, "SessionUserAgentScore", m_sessionUserAgentScore);
+		BindNumber(m_luaState, "SessionLanguageScore", m_sessionLanguageScore);
+		BindNumber(m_luaState, "SessionTargetScore", m_sessionTargetScore);
 		BindString(m_luaState, "DefaultHeaders", m_headers);
 		BindString(m_luaState, "DefaultHttpStatus", m_defaultHttpStatus);
 		BindString(m_luaState, "DefaultContentType", m_defaultContentType);
@@ -145,7 +161,7 @@ bool Settings::LoadSettings(std::string const& path)
 		BindString(m_luaState, "StartupScript", m_luaHeader);
 		BindString(m_luaState, "Entrypoint", m_luaEntrypoint);
 	}
-	
+
 	if(m_threadCount < 1)
 		m_threadCount = 1;
 	if(m_states < 1)
@@ -162,7 +178,7 @@ bool Settings::LoadSettings(std::string const& path)
 		m_bodysectors = 0;
 	if(m_maxPostSize < 0)
 		m_maxPostSize = 0;
-	
+
 	{
 		m_luaLoadData = g_luaHeader;
 		if(!m_luaHeader.empty())
@@ -181,7 +197,7 @@ bool Settings::LoadSettings(std::string const& path)
 			}
 		}
 	}
-		
+
 	return true;
 }
 
@@ -199,3 +215,10 @@ void LogError(char const* s)
 
 Settings g_settings;
 std::mutex g_errormutex;
+
+static std::mutex g_gmtime_mx;
+void gmtime_mx(std::time_t const& t, std::tm& r)
+{
+	std::lock_guard<std::mutex> lg(g_gmtime_mx);
+	r = *std::gmtime(&t);
+}

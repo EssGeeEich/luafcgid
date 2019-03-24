@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <chrono>
+#include <limits>
 
 // Lua status missing
 static bool Handle404(std::string const& script, FCGX_Request& request)
@@ -83,27 +84,33 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeD
 	
 	g_settings.TransferConfig(state);
 	
-	if(state.loadbuffer(
-		g_settings.m_luaLoadData.c_str(),
-		g_settings.m_luaLoadData.size(),
-		"head") != 0)
+	if(g_settings.m_luaLoadData.size())
 	{
-		if(state.isstring(-1))
-			LogError(state.tostdstring(-1));
+		if(state.loadbuffer(
+			g_settings.m_luaLoadData.c_str(),
+			g_settings.m_luaLoadData.size(),
+			"head") != 0)
+		{
+			if(state.isstring(-1))
+				LogError(state.tostdstring(-1));
+			else
+				LogError("Error loading Startup Script file.");
+			
+			state.close();
+			return false;
+		}
 		
-		state.close();
-		return false;
+		if(state.pcall() != 0)
+		{
+			if(state.isstring(-1))
+				LogError(state.tostdstring(-1));
+			else
+				LogError("Error running Startup Script file.");
+			
+			state.close();
+			return false;
+		}
 	}
-	
-	if(state.pcall() != 0)
-	{
-		if(state.isstring(-1))
-			LogError(state.tostdstring(-1));
-		
-		state.close();
-		return false;
-	}
-	
 	if(state.loadbuffer(
 		cache.scriptData.c_str(),
 		cache.scriptData.size(),
@@ -111,6 +118,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeD
 	{
 		if(state.isstring(-1))
 			LogError(state.tostdstring(-1));
+		else
+			LogError("Error loading script file.");
 		
 		state.close();
 		return false;
@@ -120,6 +129,8 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeD
 	{
 		if(state.isstring(-1))
 			LogError(state.tostdstring(-1));
+		else
+			LogError("Error running script file.");
 		
 		state.close();
 		return false;
@@ -128,6 +139,50 @@ static bool InitState(LuaState& lstate, LuaThreadCache const& cache, FileChangeD
 	lstate.m_chid = fcd;
 	return true;
 }
+
+template <std::size_t Size>
+static bool is_equal(char const* strBegin, std::size_t len, char const (&compare)[Size])
+{
+	return (len == (Size-1)) && strncmp(strBegin,compare,Size-1)==0;
+}
+
+enum {
+	NUM_SIZE = std::numeric_limits<std::size_t>::digits10 + 2
+};
+
+void readSessionKeyFromCookie(char const* cookie, std::string& loc)
+{
+	std::size_t cookie_len = strlen(cookie);
+	std::size_t cookie_loc = 0;
+
+	for(std::size_t ix = 0; ix < cookie_len; )
+	{
+		if(g_settings.m_sessionName.size() > (cookie_len - ix))
+			break; // The session key can't fit in what's left.
+		
+		if(strncmp(cookie + ix, g_settings.m_sessionName.c_str(), g_settings.m_sessionName.size()) == 0
+			&& (cookie[ix + g_settings.m_sessionName.size()] == '='))
+		{
+			cookie_loc = ix+g_settings.m_sessionName.size() + 1;
+			break;
+		}
+		
+		while(ix < cookie_len && cookie[ix] != ';')
+			++ix;
+	}
+
+	if(cookie_loc > 0)
+	{
+		std::size_t cookie_end = cookie_loc;
+		while(cookie[cookie_end] && cookie[cookie_end] != ';')
+			++cookie_end;
+		loc.assign(cookie + cookie_loc, cookie_end - cookie_loc);
+	}
+	else {
+		loc.clear();
+	}
+}
+
 
 bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start)
 {
@@ -149,15 +204,27 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	lrd.m_cache = &cache;
 	lrd.m_request = &request;
 	
-	SetupLuaFunctions(state, lrd);
-	
+	SessionDetectData sdd;
 	state.newtable();
-	char** p = lrd.m_request->envp;
+	char const* const* p = lrd.m_request->envp;
 	while(p && *p) {
-		char* v = strchr(*p, '=');
+		char const* v = strchr(*p, '=');
 		if(v) {
-			state.pushlstring(*p, v - *p);
-			state.pushstring(++v);
+			char const* const key = *p;
+			std::size_t const size = static_cast<std::size_t>(v - *p);
+			char const* const val = ++v;
+			
+			if(is_equal(key, size, "HTTP_COOKIE"))
+				readSessionKeyFromCookie(val, sdd.m_sessionKey);
+			else if(is_equal(key, size, "REMOTE_ADDR"))
+				sdd.m_address = val;
+			else if(is_equal(key, size, "HTTP_USER_AGENT"))
+				sdd.m_useragent = val;
+			else if(is_equal(key, size, "HTTP_ACCEPT_LANGUAGE"))
+				sdd.m_languages = val;
+			
+			state.pushlstring(key, size);
+			state.pushstring(val);
 			state.settable(-3);
 		}
 		++p;
@@ -174,19 +241,38 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 		state.settable(-3);
 	state.setglobal("Info");
 	
+	lrd.m_session.Init(g_sessions, sdd);
+	SetupLuaFunctions(state, lrd);
+	
 	state.getglobal(g_settings.m_luaEntrypoint.c_str());
 	if(state.pcall() != 0)
 	{
 		if(state.isstring(-1))
 			LogError(cache.script.get() + ": " + state.tostdstring(-1));
+		else
+			LogError(cache.script.get() + ": Unknown error.");
 		
 		state.gc(Lua::GC_COLLECT, 0);
 		return false;
 	}
 	state.gc(Lua::GC_COLLECT, 0);
 	
+	{
+		std::string cookieStr;
+		if(lrd.m_session.getCookieString(cookieStr))
+			rawLuaHeader(&lrd, "Set-Cookie", cookieStr);
+	}
+	
 	int dur = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start).count();
 	std::string sDur = std::to_string(dur);
+	
+	std::size_t contentSize = 0;
+	for(auto it = lrd.m_cache->body.begin(); it != lrd.m_cache->body.end(); ++it)
+	{
+		contentSize += it->size();
+	}
+	char contentSizeStr[NUM_SIZE];
+	int c = std::snprintf(contentSizeStr, NUM_SIZE, "%zu", contentSize);
 	
 	FCGX_PutStr("Status: ", 8, lrd.m_request->out);
 	FCGX_PutStr(lrd.m_cache->status.c_str(), lrd.m_cache->status.size(), lrd.m_request->out);
@@ -197,7 +283,9 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	FCGX_PutStr("\r\n", 2, lrd.m_request->out);
 	FCGX_PutStr(g_settings.m_headers.c_str(), g_settings.m_headers.size(), lrd.m_request->out);
 	FCGX_PutStr(lrd.m_cache->headers.c_str(), lrd.m_cache->headers.size(), lrd.m_request->out);
-	FCGX_PutStr("\r\n", 2, lrd.m_request->out);
+	FCGX_PutStr("Content-Length: ", 16, lrd.m_request->out);
+	FCGX_PutStr(contentSizeStr, c, lrd.m_request->out);
+	FCGX_PutStr("\r\n\r\n", 4, lrd.m_request->out);
 	for(auto it = lrd.m_cache->body.begin(); it != lrd.m_cache->body.end(); ++it)
 	{
 		FCGX_PutStr(it->c_str(), it->size(), lrd.m_request->out);

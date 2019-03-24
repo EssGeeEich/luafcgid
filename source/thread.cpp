@@ -18,7 +18,13 @@ void RunThread(int tid, int sock)
 		FCGX_Accept_r(&request);
 		g_acceptMutex.unlock();
 		
-		g_statepool.ExecMT(tid, request, cache);
+		try {
+			g_statepool.ExecMT(tid, request, cache);
+		} catch(std::exception& e) {
+			LogError(std::string("Thread-level exception: ") + e.what());
+		} catch(...) {
+			LogError("Unknown thread-level exception.");
+		}
 		
 		FCGX_Finish_r(&request);
 	}

@@ -31,6 +31,29 @@ MinFileInfoTime = 5000
 -- It is only calculated at most every [MinFileInfoTime] ms
 UseFileChecksum = true
 
+-- Sets the cookie name for the session key. Must be lower-case.
+SessionName = "XLuaSession"
+
+-- For how much time should we keep the session data alive for, while unused?
+-- In seconds.
+SessionTime = 3600
+
+-- Length (in bytes) of the generated Session Keys
+SessionKeyLen = 24
+
+-- Scoring system for Session Key attribution. This system helps to avoid Session Key hijacking.
+-- What's our score target? A score of >= SessionTargetScore will allow an user to proceed.
+-- To disable the Score System, set this variable to <= 0.
+SessionTargetScore = 3
+
+-- How many "points" does a request gain if the IP address matches?
+SessionIpScore = 3
+-- How many "points" does a request gain if the UserAgent matches?
+SessionUserAgentScore = 2
+-- How many "points" does a request gain if the Language matches?
+SessionLanguageScore = 1
+
+
 -- Custom HTTP headers. Will be added to every request.
 DefaultHeaders = "X-Powered-By: luafcgid2\r\n"
 
