@@ -41,6 +41,12 @@ SessionTime = 3600
 -- Length (in bytes) of the generated Session Keys
 SessionKeyLen = 24
 
+-- Transmit the session cookie through HTTPS-only? (Sets the Secure attribute)
+SessionCookieSecure = true
+
+-- Transmit the session cookie through HTTP only, disabling JS access? (Sets the HttpOnly attribute)
+SessionCookieHttpOnly = true
+
 -- Scoring system for Session Key attribution. This system helps to avoid Session Key hijacking.
 -- What's our score target? A score of >= SessionTargetScore will allow an user to proceed.
 -- To disable the Score System, set this variable to <= 0.

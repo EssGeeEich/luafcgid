@@ -23,6 +23,8 @@ public:
 	std::string m_sessionName;
 	int m_sessionTime;
 	int m_sessionKeyLen;
+	bool m_sessionCookieSecure;
+	bool m_sessionCookieHttpOnly;
 	
 	int m_sessionIpScore;
 	int m_sessionUserAgentScore;

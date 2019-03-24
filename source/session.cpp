@@ -78,8 +78,6 @@ bool Session::SetVar(std::string const& realm, std::string const& key, Lua::Vari
 {
 	Touch();
 
-	std::lock_guard<rw_mutex> mx(m_mutex);
-	Session::RealmIterator realms = GetRealms(realm, true);
 	Lua::Bool* boolVar = nullptr;
 	Lua::Number* numVar = nullptr;
 	Lua::String* strVar = nullptr;
@@ -104,6 +102,8 @@ bool Session::SetVar(std::string const& realm, std::string const& key, Lua::Vari
 		has_vals = true;
 	}
 
+	std::lock_guard<rw_mutex> mx(m_mutex);
+	Session::RealmIterator realms = GetRealms(realm, true);
 	if(has_vals)
 	{
 		for(auto it = realms.begin(); it != realms.end(); ++it)
@@ -165,7 +165,12 @@ bool LuaSessionInterface::getCookieString(std::string& s) const
 	
 	// We have a session!
 	s = g_settings.m_sessionName + "=" + m_realSession->m_sessionKey + "; Expires="
-		+ cookie_str_fmt + "; HttpOnly; Secure;";
+		+ cookie_str_fmt + ";";
+		
+	if(g_settings.m_sessionCookieHttpOnly)
+		s.append(" HttpOnly;");
+	if(g_settings.m_sessionCookieSecure)
+		s.append(" Secure;");
 	return true;
 }
 

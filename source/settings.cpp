@@ -60,6 +60,8 @@ Settings::Settings() :
 	m_sessionName("XLuaSession"),
 	m_sessionTime(3600),
 	m_sessionKeyLen(24),
+	m_sessionCookieSecure(true),
+	m_sessionCookieHttpOnly(true),
 	
 	m_sessionIpScore(3),
 	m_sessionUserAgentScore(2),
@@ -148,6 +150,8 @@ bool Settings::LoadSettings(std::string const& path)
 		BindString(m_luaState, "SessionName", m_sessionName);
 		BindNumber(m_luaState, "SessionTime", m_sessionTime);
 		BindNumber(m_luaState, "SessionKeyLen", m_sessionKeyLen);
+		BindBool  (m_luaState, "SessionCookieSecure", m_sessionCookieSecure);
+		BindBool  (m_luaState, "SessionCookieHttpOnly", m_sessionCookieHttpOnly);
 		BindNumber(m_luaState, "SessionIpScore", m_sessionIpScore);
 		BindNumber(m_luaState, "SessionUserAgentScore", m_sessionUserAgentScore);
 		BindNumber(m_luaState, "SessionLanguageScore", m_sessionLanguageScore);
