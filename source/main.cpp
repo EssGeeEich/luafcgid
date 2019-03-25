@@ -22,6 +22,7 @@
 #include "thread.h"
 #include "statepool.h"
 #include "monitor.h"
+#include "session.h"
 
 int main(int argc, char** argv) {
 	std::unique_ptr<std::ofstream> logFile;
@@ -69,11 +70,16 @@ int main(int argc, char** argv) {
 	}
 	
 	timespec tv;
-	tv.tv_sec = 3;
+	tv.tv_sec = 1;
 	tv.tv_nsec = 0;
 	
-	for (;;) {
+	for (int seconds=0;;) {
 		nanosleep(&tv, NULL);
+		(++seconds) %= 60;
+		
+		// Every 60 seconds, clean up the sessions
+		if(seconds == 0)
+			g_sessions.CleanExpiredSessions();
 	}
 
 	return 0;

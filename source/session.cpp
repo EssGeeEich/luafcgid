@@ -151,7 +151,7 @@ bool LuaSessionInterface::getCookieString(std::string& s) const
 			return false;
 		
 		// We deleted the session.
-		s = g_settings.m_sessionName + "=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+		s = g_settings.m_sessionName + "=_; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
 		return true;
 	}
 	
@@ -265,6 +265,20 @@ Session* SessionManager::CreateSession(SessionDetectData const& sdd)
 		auto it = m_sessions.emplace(std::piecewise_construct, std::make_tuple(skey), std::make_tuple(this,skey,sdd));
 		if(it.second == true)
 			return &(it.first->second);
+	}
+}
+
+void SessionManager::CleanExpiredSessions()
+{
+	std::lock_guard<rw_mutex> mx(m_mutex);
+	for(auto it = m_sessions.begin(); it != m_sessions.end(); )
+	{
+		if(!(it->second.IsValid()))
+		{
+			m_sessions.erase(it++);
+		}
+		else
+			++it;
 	}
 }
 

@@ -168,7 +168,7 @@ class SessionManager {
 	static void CreateSessionKey(std::string&);
 	
 public:
-	// Remove all the expired sessions. Currently unused and unimplemented.
+	// Remove all the expired sessions.
 	void CleanExpiredSessions();
 	
 	// Create a new empty session
