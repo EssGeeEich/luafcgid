@@ -150,39 +150,72 @@ enum {
 	NUM_SIZE = std::numeric_limits<std::size_t>::digits10 + 2
 };
 
-void readSessionKeyFromCookie(char const* cookie, std::string& loc)
+static char const g_empty[] = "";
+
+void parseCookies(std::string& str, std::map<char const*, char const*>& data)
 {
-	std::size_t cookie_len = strlen(cookie);
-	std::size_t cookie_loc = 0;
-
-	for(std::size_t ix = 0; ix < cookie_len; )
+	data.clear();
+	char* pos = &*str.begin();
+	char* sce = nullptr;
+	char* ekill = nullptr;
+	char* equals = nullptr;
+	char* semicolon = nullptr;
+	char old = 0;
+	bool quotes = false;
+	while(pos)
 	{
-		if(g_settings.m_sessionName.size() > (cookie_len - ix))
-			break; // The session key can't fit in what's left.
-		
-		if(strncmp(cookie + ix, g_settings.m_sessionName.c_str(), g_settings.m_sessionName.size()) == 0
-			&& (cookie[ix + g_settings.m_sessionName.size()] == '='))
+		while(' ' == *pos)
+			++pos;
+		sce = pos;
+		while((*sce != 0) &&
+			  (*sce != ',') &&
+			  (*sce != ';') &&
+			  (*sce != '='))
+			++sce;
+		ekill = sce - 1;
+		while((*ekill == ' ') && (ekill >= pos))
+			*(ekill--) = 0;
+		old = *sce;
+		*sce = 0;
+		if(old != '=')
 		{
-			cookie_loc = ix+g_settings.m_sessionName.size() + 1;
-			break;
+			data[pos] = g_empty;
+			if(old == 0)
+				break;
+			pos = sce + 1;
+			continue;
 		}
-		
-		while(ix < cookie_len && cookie[ix] != ';')
-			++ix;
-	}
-
-	if(cookie_loc > 0)
-	{
-		std::size_t cookie_end = cookie_loc;
-		while(cookie[cookie_end] && cookie[cookie_end] != ';')
-			++cookie_end;
-		loc.assign(cookie + cookie_loc, cookie_end - cookie_loc);
-	}
-	else {
-		loc.clear();
+		equals = sce + 1;
+		quotes = false;
+		semicolon = equals;
+		while(semicolon[0] &&
+			(quotes ||
+			   ((semicolon[0] != ';') && (semicolon[0] != ','))
+			)
+		)
+		{
+			if(semicolon[0] == '"')
+				quotes = !quotes;
+			++semicolon;
+		}
+		if(!semicolon[0])
+			semicolon = nullptr;
+		if(semicolon)
+		{
+			semicolon[0] = 0;
+			++semicolon;
+		}
+		int lnEquals = static_cast<int>(strlen(equals))-1;
+		if((equals[0] == '"') &&
+		   (equals[lnEquals]=='"'))
+		{
+			equals[lnEquals] = 0;
+			++equals;
+		}
+		data[pos] = equals;
+		pos = semicolon;
 	}
 }
-
 
 bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Request& request, LuaThreadCache& cache, clock::time_point start)
 {
@@ -200,6 +233,9 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 		it->reserve(g_settings.m_bodysize);
 	}
 	
+	std::map<char const*, char const*> cookies;
+	std::string cookie_buffer;
+	
 	LuaRequestData lrd;
 	lrd.m_cache = &cache;
 	lrd.m_request = &request;
@@ -215,7 +251,10 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 			char const* const val = ++v;
 			
 			if(is_equal(key, size, "HTTP_COOKIE"))
-				readSessionKeyFromCookie(val, sdd.m_sessionKey);
+			{
+				cookie_buffer = val;
+				parseCookies(cookie_buffer, cookies);
+			}
 			else if(is_equal(key, size, "REMOTE_ADDR"))
 				sdd.m_address = val;
 			else if(is_equal(key, size, "HTTP_USER_AGENT"))
@@ -230,6 +269,17 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 		++p;
 	}
 	state.setglobal("Env");
+	
+	state.newtable();
+	for(auto it = cookies.begin(); it != cookies.end(); ++it)
+	{
+		if(!strcmp(it->first, g_settings.m_sessionName.c_str()))
+			sdd.m_sessionKey = it->second;
+		state.pushstring(it->first);
+		state.pushstring(it->second);
+		state.settable(-3);
+	}
+	state.setglobal("Cookies");
 	
 	state.newtable();
 		state.pushstring("State");
