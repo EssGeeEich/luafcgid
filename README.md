@@ -18,25 +18,21 @@ All development testing is done with a Raspberry Pi Zero W.
 
 ## Software:
 
-+ Raspbian Lite - last stable release
-+ nginx web server - last stable release
-+ Lua 5.3 - last stable release
-
-# Prerequisites
-
++ Debian Stretch
++ nginx web server
 + Lua 5.3
-+ libfcgi 2.4
-+ libpthread
 
-On a Raspberry Pi, simply run the following:
+# Installation
 
-    # sudo apt-get -y install libfcgi-dev liblua5.3-dev git make build-essential
-    # git clone --recursive https://github.com/EssGeeEich/luafcgid2.git
-    # cd luafcgid2
-    # make
-    # sudo make install install-daemon
+On Debian Stretch (including Raspbian Stretch), simply run the following:
 
-You may need to tinker with the Makefile if you aren't using a Raspberry Pi.
+    # apt-get -y install libfcgi-dev liblua5.3-dev git make build-essential
+    $ git clone --recursive https://github.com/EssGeeEich/luafcgid2.git
+    $ cd luafcgid2
+    $ make
+    # make install install-daemon
+
+You may need to tinker with the Makefile on other distros.
 
 ## Webserver (nginx):
 
@@ -56,21 +52,11 @@ luafcgid2 spawns and manages a number of worker threads that each contain an
 isolated blocking accept loop. The FastCGI libraries provide a connect queue 
 for each worker thread so that transient load spikes can be handled with a 
 minimum of fuss.
-
-	                  +---------------+                                
-	              +-->| worker thread |--+            +-------------+
-	+----------+  |   +---------------+  |            |   scripts   |
-	| luafcgid |--+                      +-- mutex -->| loaded into |
-	+----------+  |   +---------------+  |     |      |  Lua states |
-	     |        +-->| worker thread |--+     |      +-------------+
-	     |            +---------------+        |                
-	     |                                     |             
-	     +------------- housekeeping ----------+             
 			
 Lua is then introduced into the picture by created a shared Lua state for each 
 Lua script that is requested. A script will be loaded multiple times.
 All scripts - including duplicates (clones) - are completely isolated from each other.
-After a state is initialized and loaded  with a script, it is kept in memory forever.
+After a state is initialized and loaded with a script, it is usually kept in memory forever.
 Each Lua VM is run within a worker thread as needed.
 The use of on-demand clones allows for multiple workers to run the same popular script.
 There is a configurable limit to the total number of Lua states that luafcgid will maintain.
