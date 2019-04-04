@@ -14,7 +14,7 @@ See the LICENSE file included with the source code
 
 # Testing
 
-All development testing is done with a Raspberry Pi Zero W.
+All development testing is done with a Raspberry Pi Zero W, and sometimes on a Debian x64 distro.
 
 ## Software:
 
