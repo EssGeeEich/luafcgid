@@ -34,6 +34,11 @@ On Debian Stretch (including Raspbian Stretch), simply run the following:
 
 You may need to tinker with the Makefile on other distros.
 
+If you just want to update the daemon, without touching the configuration files, you can do the following:
+
+    $ make clean; make
+    # make update
+
 ## Webserver (nginx):
 
 Add the following lines to your /etc/nginx/sites-available/your-site-here in the server{} section:
