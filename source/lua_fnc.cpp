@@ -159,9 +159,9 @@ static void luaSessionClear(LuaRequestData* reqData, std::string const& realm)
 	reqData->m_session.Clear(realm);
 }
 
-static bool luaSessionSetVar(LuaRequestData* reqData, std::string const& realm, std::string const& var, Lua::Variable* data)
+static bool luaSessionSetVar(LuaRequestData* reqData, std::string const& realm, std::string const& var, std::shared_ptr<Lua::Variable> data)
 {
-	return reqData->m_session.SetVar(realm, var, data);
+	return reqData->m_session.SetVar(realm, var, data.get());
 }
 
 static Lua::ReturnValues luaSessionGetVar(LuaRequestData* reqData, std::string const& realm, std::string const& var)
