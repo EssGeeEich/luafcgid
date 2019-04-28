@@ -25,6 +25,7 @@ public:
 	int m_sessionKeyLen;
 	bool m_sessionCookieSecure;
 	bool m_sessionCookieHttpOnly;
+	std::string m_sessionCookieSameSite;
 	
 	int m_sessionIpScore;
 	int m_sessionUserAgentScore;

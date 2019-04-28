@@ -156,7 +156,7 @@ public:
 	bool SetVar(std::string const& realm, std::string const& var, Lua::Variable* data);
 	Lua::ReturnValues GetVar(std::string const& realm, std::string const& var);
 	
-	bool getCookieString(std::string&) const;
+	bool getCookieString(std::string&, std::string const& domain) const;
 };
 
 

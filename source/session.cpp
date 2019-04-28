@@ -142,7 +142,7 @@ Lua::ReturnValues Session::GetVar(std::string const& realm, std::string const& k
 // LuaSessionInterface
 LuaSessionInterface::LuaSessionInterface() : m_manager(nullptr), m_realSession(nullptr) {}
 
-bool LuaSessionInterface::getCookieString(std::string& s) const
+bool LuaSessionInterface::getCookieString(std::string& s, std::string const& domain) const
 {
 	if(!m_realSession || !m_realSession->IsValid())
 	{
@@ -170,8 +170,18 @@ bool LuaSessionInterface::getCookieString(std::string& s) const
 	if(g_settings.m_sessionCookieHttpOnly)
 		s.append(" HttpOnly;");
 	if(g_settings.m_sessionCookieSecure)
-		s.append(" Secure; SameSite=Strict;");
+		s.append(" Secure;");
+	if(g_settings.m_sessionCookieSameSite == "Strict")
+		s.append(" SameSite=Strict;");
+	else if(g_settings.m_sessionCookieSameSite == "Lax")
+		s.append(" SameSite=Lax;");
 	s.append(" Path=/;");
+	if(!domain.empty())
+	{
+		s.append(" Domain=");
+		s.append(domain);
+		s.append(";");
+	}
 	return true;
 }
 

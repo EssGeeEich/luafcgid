@@ -243,6 +243,7 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	SessionDetectData sdd;
 	state.newtable();
 	char const* const* p = lrd.m_request->envp;
+	std::string domain;
 	while(p && *p) {
 		char const* v = strchr(*p, '=');
 		if(v) {
@@ -261,6 +262,8 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 				sdd.m_useragent = val;
 			else if(is_equal(key, size, "HTTP_ACCEPT_LANGUAGE"))
 				sdd.m_languages = val;
+			else if(is_equal(key, size, "SERVER_NAME"))
+				domain = val;
 			
 			state.pushlstring(key, size);
 			state.pushstring(val);
@@ -309,7 +312,7 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	
 	{
 		std::string cookieStr;
-		if(lrd.m_session.getCookieString(cookieStr))
+		if(lrd.m_session.getCookieString(cookieStr, domain))
 			rawLuaHeader(&lrd, "Set-Cookie", cookieStr);
 	}
 	

@@ -47,6 +47,9 @@ SessionCookieSecure = true
 -- Transmit the session cookie through HTTP only, disabling JS access? (Sets the HttpOnly attribute)
 SessionCookieHttpOnly = true
 
+-- Select a SameSite directive for cookies. Allowed values are: Strict, Lax. Leave empty for no SameSite directive.
+SessionCookieSameSite = ""
+
 -- Scoring system for Session Key attribution. This system helps to avoid Session Key hijacking.
 -- What's our score target? A score of >= SessionTargetScore will allow an user to proceed.
 -- To disable the Score System, set this variable to <= 0.
