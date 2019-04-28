@@ -170,7 +170,8 @@ bool LuaSessionInterface::getCookieString(std::string& s) const
 	if(g_settings.m_sessionCookieHttpOnly)
 		s.append(" HttpOnly;");
 	if(g_settings.m_sessionCookieSecure)
-		s.append(" Secure;");
+		s.append(" Secure; SameSite=Strict;");
+	s.append(" Path=/;");
 	return true;
 }
 
