@@ -273,6 +273,8 @@ bool LuaStatePool::ExecRequest(LuaState& luaState, int sid, int tid, FCGX_Reques
 	}
 	state.setglobal("Env");
 	
+	g_settings.TransferLocalConfig(state, domain);
+	
 	state.newtable();
 	for(auto it = cookies.begin(); it != cookies.end(); ++it)
 	{

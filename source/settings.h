@@ -51,6 +51,7 @@ public:
 	Settings();
 	bool LoadSettings(std::string const& path);
 	void TransferConfig(Lua::State& dest);
+	void TransferLocalConfig(Lua::State& dest, std::string const& domain);
 };
 
 extern Settings g_settings;

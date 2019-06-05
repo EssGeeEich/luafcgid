@@ -117,13 +117,14 @@ void Settings::iPushValueTransfer(Lua::State& dest, int offset)
 				dest.rawset(-3);
 				m_luaState.pop(1);
 			}
-			++offset;
+			if(offset < 0)
+				++offset;
 		}
 		break;
 	}
 }
 
-// setup LuaConfig.* and Config.*
+// Setup Config.*
 std::mutex g_transferMutex;
 void Settings::TransferConfig(Lua::State& dest)
 {
@@ -131,9 +132,27 @@ void Settings::TransferConfig(Lua::State& dest)
 
 	m_luaState.getglobal("Config");
 	iPushValueTransfer(dest, -1);
-	m_luaState.pop(1);
 	dest.setglobal("Config");
+	m_luaState.pop(1);
 }
+
+// Setup LocalConfig.*
+void Settings::TransferLocalConfig(Lua::State& dest, std::string const& domain)
+{
+	std::lock_guard<std::mutex> g(g_transferMutex);
+
+	m_luaState.getglobal("Config");
+	m_luaState.pushstdstring(domain);
+	if(m_luaState.next(-2) != 0)
+	{
+		iPushValueTransfer(dest, -1);
+		dest.setglobal("LocalConfig");
+		m_luaState.pop(3);
+	}
+	else
+		m_luaState.pop(1);
+}
+
 
 bool Settings::LoadSettings(std::string const& path)
 {
