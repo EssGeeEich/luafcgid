@@ -143,14 +143,10 @@ void Settings::TransferLocalConfig(Lua::State& dest, std::string const& domain)
 
 	m_luaState.getglobal("Config");
 	m_luaState.pushstdstring(domain);
-	if(m_luaState.next(-2) != 0)
-	{
-		iPushValueTransfer(dest, -1);
-		dest.setglobal("LocalConfig");
-		m_luaState.pop(3);
-	}
-	else
-		m_luaState.pop(1);
+	m_luaState.rawget(-2);
+	iPushValueTransfer(dest, -1);
+	dest.setglobal("LocalConfig");
+	m_luaState.pop(2);
 }
 
 
